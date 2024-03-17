@@ -111,8 +111,9 @@
     }
 
     const behaviour = new BackendBehaviour()
-
-    window.snark = new SNARKBehaviour()
+    const snark = new SNARKBehaviour()
+    window.snark = snark
+    behaviour.extend(snark.clone().as_dyn_obj())
     window.client = await new Provider(
       // ice_servers
       // 'stun://stun.l.google.com:19302',
@@ -129,8 +130,7 @@
       behaviour
     )
 
-   window.load_r1cs = async function(r1cs_url, wasm_url, _taskNum) {
-      const taskNum = parseInt(_taskNum);
+   window.load_r1cs = async function(r1cs_url, wasm_url) {
       const snarkBuilder = await new SNARKTaskBuilder(r1cs_url, wasm_url);
 
       const F = SupportedPrimeField.Vesta
@@ -141,7 +141,7 @@
       console.log(input)
       console.log("gen circuit START")
       const circuits = snarkBuilder.gen_circuits(
-	input, [], 36
+	input, [], 6
       )
       console.log("gen circuit DONE")
      const task = await SNARKBehaviour.gen_proof_task_ref(circuits)
@@ -175,8 +175,8 @@
       onclick="start();window.client.request('nodeInfo', []).then((ret)=>{console.log(ret);done()})"
       >node info</button></br>
     <button
-onclick="start();let input = document.getElementById('input').innerText.split(';');window.load_r1cs(input[0], input[1], input[2]).then(function(circuits) {window.circuits = circuits;done()});"
-  >generate ZKP Task and split [R1CSURL;WASMURL;SplitNum]</button>
+onclick="start();let input = document.getElementById('input').innerText.split(';');window.load_r1cs(input[0], input[1]).then(function(circuits) {window.circuits = circuits;done()});"
+  >generate ZKP Task [R1CSURL;WASMURL]</button>
     <button
 onclick="start();let input = document.getElementById('input').innerText.split(';');
 let splitedTask = window.task.split(input.length);
@@ -184,18 +184,14 @@ for (let i = 0; i < input.length; i++) {
     window.snark.send_proof_task_to(window.client.as_ref(), splitedTask[i], input[i]).then(function(ret) {
     console.log(ret);
     done()
-})}">send ZKP Task to [DID;DID;DID...]</button>
+})}">split and send ZKP Task to [DID;DID;DID...]</button>
   </div>
-
-
-
-
 
   <div id="io-panel">
     <h3>Input / Output Panel</h3>
-    <span>input</span>
-    <p id="input" style="font-size:0.80rem;height:2.5rem; background-color:#eee; overflow:scroll;" contenteditable=true></p>
-    <span>output</span>
+    <h4>input</h4>
+  <p id="input" style="font-size:0.80rem;height:2.5rem; background-color:#eee; overflow:scroll;" contenteditable=true></p><button onclick="document.getElementById('input').innerText=''">clear</button></br>
+    <h4>output</h4>
     <p id="output" style="font-size:0.80rem;height:2.5rem; background-color:#eee; overflow:scroll; word-wrap: break-word;"></p>
 
   </div>

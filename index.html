@@ -4,40 +4,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rings Network: Handshake example</title>
+    <title>zk p2p demo </title>
     <style>
-      div { padding: 0.2rem; }
-      iframe {
-      width: 30rem;
-      height: 25rem;
-      }
+  div { padding: 0.2rem; }
 
-      #instance {
-        width: 100rem;
-      }
-      #code {
-      fload left;
-      width: 40rem;
-      }
-      #node_content {
-      background-color: black; color: white; width: 40rem; height: 50rem; font-size: 0.8rem;
-      }
-      #controller {
+     #controller {
       height: 2rem;
       width: 10rem;
-      }
-      .container {
-      display: flex;
-      justify-content: space-between;
-      }
-
+     }
+  .container {
+    display: flex;
+    flex-direction: column;
+  }
       @media (max-width: 600px) {
       .container {
       flex-direction: column;
       }
+
+      #io-panel {
+	width: auto;
       }
+      }
+    #console {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 200px;
+        overflow-y: scroll;
+        background-color: #f0f0f0;
+        border-top: 2px solid #000;
+        box-sizing: border-box;
+        padding: 10px;
+        font-family: monospace;
+    }
     </style>
+    <script>
+      function openWindows(n) {
+	for (let i = 1; i <= n; i++) {
+          const currentUrl = window.location.href;
+          let windowRef = window.open(currentUrl, `_blank${i}`);
+          if (windowRef) {
+            windowRef.addEventListener('load', () => {
+                windowRef.document.title = `zk p2p demo -- #${i}`;
+            }, { once: false });
+          } else {
+            alert(`Window #${i} was blocked by the browser.`);
+            break; // Stop the loop if a window was blocked
+          }
+	}
+      }
+    </script>
 </head>
 <body>
-  hello world
+  <style>#forkongithub a{background:#000;color:#fff;text-decoration:none;font-family:arial,sans-serif;text-align:center;font-weight:bold;padding:5px 40px;font-size:1rem;line-height:2rem;position:relative;transition:0.5s;}#forkongithub a:hover{background:#c11;color:#fff;}#forkongithub a::before,#forkongithub a::after{content:"";width:100%;display:block;position:absolute;top:1px;left:0;height:1px;background:#fff;}#forkongithub a::after{bottom:1px;top:auto;}@media screen and (min-width:800px){#forkongithub{position:absolute;display:block;top:0;right:0;width:200px;overflow:hidden;height:200px;z-index:9999;}#forkongithub a{width:200px;position:absolute;top:60px;right:-60px;transform:rotate(45deg);-webkit-transform:rotate(45deg);-ms-transform:rotate(45deg);-moz-transform:rotate(45deg);-o-transform:rotate(45deg);box-shadow:4px 4px 10px rgba(0,0,0,0.8);}}</style>
+  <span id="forkongithub"><a href="https://github.com/RingsNetwork/rings-wasm-p2p">Fork me on GitHub</a></span>
+
+<div class="container">
+  <div id="panel">
+    <button onclick="openWindows(1)">Create 1 node</button>
+    <button onclick="openWindows(2);">Create 2 nodes</button>
+    <button onclick="openWindows(3);">Create 3 nodes</button>
+  </div>
+  <h2 id="did"></h2>
+  <p id="loading" style="color:red;visibility: hidden;">
+    executing
+</p>
+  <script>
+    function start() {
+      document.getElementById("loading").style.visibility="visible";
+    }
+
+    function done() {
+      document.getElementById("loading").style.visibility="hidden";
+    }
+  </script>
+
+  <script type="module">
+    import init, { debug, Provider, BackendBehaviour } from './node_modules/@ringsnetwork/rings-node/dist/rings_node.js';
+    import { Wallet } from "./node_modules/ethers/dist/ethers.js"
+    await init();
+    debug(true)
+    const account = Wallet.createRandom();
+    document.getElementById("did").innerText = account.address;
+    // init signer
+    // Utility function to convert hex string to Uint8Array
+    function hexToBytes(hexString) {
+      // Remove the "0x" prefix if it exists
+      if (hexString.startsWith('0x')) {
+        hexString = hexString.slice(2);
+      }
+      const byteArray = [];
+      for (let i = 0; i < hexString.length; i+=2) {
+        byteArray.push(parseInt(hexString.substr(i, 2), 16));
+      }
+      return new Uint8Array(byteArray);
+    }
+
+    const signer = async function(proof) {
+       const signed = await account.signMessage(proof)
+       return new Uint8Array(hexToBytes(signed));
+    }
+
+    const behaviour = new BackendBehaviour()
+
+    window.client = await new Provider(
+      // ice_servers
+      // 'stun://stun.l.google.com:19302',
+      'stun://stun.qq.com:3478',
+      // stable_timeout
+      BigInt(1),
+      // account
+      account.address,
+      // account type
+      "eip191",
+      // signer
+      signer,
+      // callback
+      behaviour
+    )
+    await window.client.listen()
+  </script>
+
+  <div id="panel">
+    <!-- <button onclick="openWindows(1)">Create 1 node</button> -->
+    <!-- <button onclick="openWindows(2);">Create 2 nodes</button> -->
+    <!-- <button onclick="openWindows(3);">Create 3 nodes</button> -->
+  </div>
+  <div id="handshake">
+    <button
+      onclick="start();window.client.request('createOffer', [document.getElementById('input').innerText]).then((res) => { console.log(res);document.getElementById('output').innerText=res.offer;done()})"
+      >Create Offer SDP</button>
+    <button
+      onclick="start();window.client.request('answerOffer', [getElementById('input').innerText]).then((res)=>{console.log(res);document.getElementById('output').innerText=res.answer;done()})"
+      >Accept Offer [SDP] and Create answer SDP</button>
+    <button
+      onclick="start();window.client.request('acceptAnswer', [getElementById('input').innerText]).then((res)=>{console.log(res);done()})"
+      >Accept Answer [SDP]</button>
+    <button
+      onclick="start();window.client.request('connectWithDid', [document.getElementById('input').innerText]).then((ret)=>{console.log(ret);done()})"
+      >connect with [DID]</button>
+    <button
+      onclick="start();window.client.request('listPeers', []).then((ret)=>{console.log(ret);done()})"
+      >list peers</button>
+    <button
+      onclick="start();window.client.request('nodeInfo', []).then((ret)=>{console.log(ret);done()})"
+      >node info</button>
+    <button
+      onclick="start();window.client.request('sendSimpleText', document.getElementById('input').innerText.split(';')).then((ret)=>{document.getElementById('output').innerText=ret;done()})"
+      >send message to [DID; MSG]</button>
+  </div>
+
+
+  <div id="io-panel">
+    <h3>Input / Output Panel</h3>
+    <span>input</span>
+    <p id="input" style="font-size:0.80rem;height:2.5rem; background-color:#eee; overflow:scroll;" contenteditable=true></p>
+    <span>output</span>
+    <p id="output" style="font-size:0.80rem;height:2.5rem; background-color:#eee; overflow:scroll; word-wrap: break-word;"></p>
+
+  </div>
+
+</div>
+  <footer>
+  <span>console</span>
+  <div id="console"></div>
+  <script>
+(function() {
+  var consoleContainer = document.getElementById('console');
+
+    function formatTime(date) {
+        return date.getHours().toString().padStart(2, '0') + ':' +
+               date.getMinutes().toString().padStart(2, '0') + ':' +
+               date.getSeconds().toString().padStart(2, '0');
+    }
+
+    function updateConsole(method, args) {
+        var currentTime = formatTime(new Date());
+        var message = currentTime + ' - ' + Array.from(args).map(function(arg) {
+            return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg;
+        }).join(' ');
+
+        var messageElement = document.createElement('div');
+        messageElement.textContent = message;
+        consoleContainer.appendChild(messageElement);
+
+        consoleContainer.scrollTop = consoleContainer.scrollHeight; // 滚动到最新信息
+    }
+
+
+    var originalLog = console.log;
+    console.log = function() {
+        originalLog.apply(console, arguments);
+        updateConsole('log', arguments);
+    };
+
+    var originalInfo = console.info;
+    console.info = function() {
+        originalInfo.apply(console, arguments);
+        updateConsole('info', arguments);
+    };
+    var originalDebug = console.debug;
+    console.debug = function() {
+        originalDebug.apply(console, arguments);
+        updateConsole('debug', arguments);
+    };
+    var originalError = console.error;
+    console.error = function() {
+        originalError.apply(console, arguments);
+        updateConsole('error', arguments);
+    };
+
+
+
+})();
+  </script>
+  </footer>
 </body>

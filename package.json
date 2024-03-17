@@ -13,8 +13,8 @@
   "author": "Ryan Kung",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "ethers": "^6.7.1",
     "@ringsnetwork/rings-node": "git+file:../rings-node#f0c66d6",
+    "ethers": "^6.7.1",
     "secp256k1": "^5.0.0"
   }
 }

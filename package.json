@@ -13,7 +13,7 @@
   "author": "Ryan Kung",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "@ringsnetwork/rings-node": "git+file:../rings-node#f0c66d6",
+    "@ringsnetwork/rings-node": "https://github.com/RingsNetwork/rings/releases/download/v0.6.0-alpha/rings-v0.6.0-alpha-wasm32-unknown-unknown.tgz",
     "ethers": "^6.7.1",
     "secp256k1": "^5.0.0"
   }

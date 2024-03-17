@@ -81,7 +81,11 @@
   </script>
 
   <script type="module">
-    import init, { debug, Provider, BackendBehaviour } from './node_modules/@ringsnetwork/rings-node/dist/rings_node.js';
+  import init, { debug, Provider,
+		 BackendBehaviour, SNARKTaskBuilder, SNARKBehaviour,
+		 SupportedPrimeField,
+		 Input
+	       } from './node_modules/@ringsnetwork/rings-node/dist/rings_node.js';
     import { Wallet } from "./node_modules/ethers/dist/ethers.js"
     await init();
     debug(true)
@@ -108,12 +112,13 @@
 
     const behaviour = new BackendBehaviour()
 
+    window.snark = new SNARKBehaviour()
     window.client = await new Provider(
       // ice_servers
       // 'stun://stun.l.google.com:19302',
       'stun://stun.qq.com:3478',
       // stable_timeout
-      BigInt(1),
+      BigInt(5),
       // account
       account.address,
       // account type
@@ -123,7 +128,29 @@
       // callback
       behaviour
     )
+
+   window.load_r1cs = async function(r1cs_url, wasm_url, _taskNum) {
+      const taskNum = parseInt(_taskNum);
+      const snarkBuilder = await new SNARKTaskBuilder(r1cs_url, wasm_url);
+
+      const F = SupportedPrimeField.Vesta
+      const publicInputData = [["inp", new Array(2).fill(BigInt(0))]]
+      const input = Input.from_array(publicInputData, F)
+
+      console.log("init input DONE")
+      console.log(input)
+      console.log("gen circuit START")
+      const circuits = snarkBuilder.gen_circuits(
+	input, [], 36
+      )
+      console.log("gen circuit DONE")
+     const task = await SNARKBehaviour.gen_proof_task_ref(circuits)
+     window.task = task;
+    }
+
+
     await window.client.listen()
+
   </script>
 
   <div id="panel">
@@ -145,15 +172,23 @@
       onclick="start();window.client.request('connectWithDid', [document.getElementById('input').innerText]).then((ret)=>{console.log(ret);done()})"
       >connect with [DID]</button>
     <button
-      onclick="start();window.client.request('listPeers', []).then((ret)=>{console.log(ret);done()})"
-      >list peers</button>
-    <button
       onclick="start();window.client.request('nodeInfo', []).then((ret)=>{console.log(ret);done()})"
-      >node info</button>
+      >node info</button></br>
     <button
-      onclick="start();window.client.request('sendSimpleText', document.getElementById('input').innerText.split(';')).then((ret)=>{document.getElementById('output').innerText=ret;done()})"
-      >send message to [DID; MSG]</button>
+onclick="start();let input = document.getElementById('input').innerText.split(';');window.load_r1cs(input[0], input[1], input[2]).then(function(circuits) {window.circuits = circuits;done()});"
+  >generate ZKP Task and split [R1CSURL;WASMURL;SplitNum]</button>
+    <button
+onclick="start();let input = document.getElementById('input').innerText.split(';');
+let splitedTask = window.task.split(input.length);
+for (let i = 0; i < input.length; i++) {
+    window.snark.send_proof_task_to(window.client.as_ref(), splitedTask[i], input[i]).then(function(ret) {
+    console.log(ret);
+    done()
+})}">send ZKP Task to [DID;DID;DID...]</button>
   </div>
+
+
+
 
 
   <div id="io-panel">
